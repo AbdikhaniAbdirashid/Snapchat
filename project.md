@@ -1,5 +1,9 @@
 # Snap — Frontend Sprint (Thu 3/9 → Mon 7/9)
 
+> **The group's shared plan is [`SPRINT.md`](./SPRINT.md)** — route tree, per-person steps, the
+> contract and the checklist all live there, and that's the file we all update. This file is
+> Devinder's own working notes for Part A. If the two ever disagree, `SPRINT.md` wins.
+
 Build the whole Expo frontend against a **mocked** API. On Wed 9/9 we swap a single file
 (`snap/lib/api.ts`) from the mock to the real backend and everything should keep working.
 
