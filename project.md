@@ -19,10 +19,31 @@ Also: leave `snap/AGENTS.md` in place, and decide new packages as a group (check
 
 | Part | Owner | Scope |
 | --- | --- | --- |
-| **A** | **me (Devinder)** | `lib/api.ts` mock, Camera + PhotoPreview into navigation, error sweep + centralized 401 → logout |
-| B | teammate | Navigation skeleton + auth gate, Register / Login |
+| **A** | **me (Devinder)** | `lib/api.ts` mock, auth context shape, Camera + PhotoPreview into navigation, error sweep + centralized 401 → logout |
+| B | teammate | Navigation skeleton + auth gate, auth context implementation, Register / Login |
 | C | teammate | ConversationsPage (friend list), AddFriendView |
 | D | teammate | MapsPage, recipient picker + `sendSnap` |
+
+### Agree on this Thursday, before anyone writes a screen
+
+Four of us editing `app/` in parallel with no agreed filenames means merge conflicts and
+duplicate screens. The route tree is fixed up front:
+
+```
+app/_layout.tsx            root stack + AuthProvider
+app/(auth)/_layout.tsx
+app/(auth)/login.tsx       B
+app/(auth)/register.tsx    B
+app/(tabs)/_layout.tsx     B
+app/(tabs)/index.tsx       camera (A moves the current app/index.tsx here)
+app/(tabs)/conversations.tsx   C
+app/(tabs)/map.tsx         D
+app/add-friend.tsx         C
+app/send-snap.tsx          D — recipient picker, opened from the photo preview
+lib/auth-context.tsx       shape by A, implementation by B
+```
+
+Everything that isn't a screen stays out of `app/` — `components/`, `lib/`.
 
 ## Part A — my tasks
 
@@ -65,7 +86,32 @@ The mock must:
 - seed data with both `mutual: true` and `mutual: false`
 - throw the real backend messages (table below)
 
+The mock also has to **remember who is logged in**: `login`/`register` store the username, and
+`addFriend` compares against it for the 400 `You can't add yourself as a friend`, while `sendSnap`
+reads the in-memory friend list for the 400 `You are not friends with …`. The real backend gets
+this from the JWT; the mock has to keep it itself.
+
 **Done when:** every function returns both a successful response and its mocked errors.
+
+### A1b · Auth context shape (Thu 3/9, with A1)
+
+A3 says `logout()` lives in exactly one place — but B needs that same place on Thursday for the
+auth gate and on Friday for storing tokens. So the shape gets decided on day one, not on Monday:
+
+```ts
+type AuthState = {
+  user: ApiUser | null
+  isLoading: boolean          // true while reading SecureStore on startup
+  login(username, password): Promise<void>   // calls api.login + setAccessToken + SecureStore
+  register(username, password): Promise<void>
+  logout(): Promise<void>     // setAccessToken(null) + clear SecureStore + router.replace login
+}
+```
+
+I define the file and the types, B fills in the implementation and the gate. Screens never touch
+SecureStore or `setAccessToken` directly — they call the context.
+
+**Done when:** B can build the auth gate without inventing his own token storage.
 
 ### A2 · Camera + PhotoPreview (Sat 5/9)
 
@@ -189,6 +235,30 @@ Don't touch existing endpoints; propose new ones in the group chat first.
 14. Incoming friend requests: new endpoint, don't change `GET /friends`.
 15. WebSockets for text messages (`@fastify/websocket`) — Wednesday's topic.
 
+## Questions for Ahmad — found by reading the backend
+
+Rule 1 says raise contract problems instead of working around them. These three all affect
+Wednesday's swap, so they go in the group chat before Tuesday.
+
+**1. Access tokens live 60 seconds and there is no refresh endpoint.**
+`generateFreshTokens` in `backend/src/http/controllers.ts` signs the access token with
+`expiresIn: "60s"`; the refresh token lasts 10 years but no route consumes it and `/refresh`
+isn't in the contract. A correct centralized `401 → logout` therefore throws the user back to
+login one minute after they sign in. Does he want a refresh endpoint on Tuesday, or a longer
+expiry? We don't work around it on our side.
+
+**2. 401 from protected routes isn't the error envelope.**
+The guard in `backend/src/auth.ts` does `reply.status(401).send('Not authorized')` — plain text,
+not `{ success, code, message }`. Our non-JSON fallback (`new ApiError(status, 'Något gick fel')`)
+handles it without crashing, but the message the user sees on Wednesday won't be the mock's
+`You are not authorized`. Everything thrown through the error handler (`Invalid password!` etc.)
+is fine — it's only the auth guard.
+
+**3. How is `recipients` encoded in the multipart body?**
+`controllers.sendSnap` reads `req.body.recipients`, and backend point 11 is where that gets
+finished — but the frontend has to pick the encoding *now* so the two match. Proposal: append
+`recipients` once per username to the `FormData`. Needs confirming with whoever takes point 11.
+
 ## Current state of the repo
 
 - `snap/app/index.tsx` — camera screen (root route today, moves in A2)
@@ -196,6 +266,12 @@ Don't touch existing endpoints; propose new ones in the group chat first.
 - `snap/components/PhotoPreview.tsx` — preview + discard
 - `snap/lib/` — **does not exist yet**, A1 creates it
 - Expo SDK 54, expo-router 6, expo-camera 17, bun
+- `plan.md` in the repo root is the original brainstorm sketch — superseded by this file.
+- `snap/` still has the Expo starter template files (`hello-wave.tsx`, `parallax-scroll-view.tsx`,
+  `ui/collapsible.tsx`, `themed-*.tsx`, `haptic-tab.tsx`, `hooks/`, `constants/theme.ts`,
+  `scripts/reset-project.js`). Nothing under `app/` imports any of them — they only reference each
+  other. Since the bar is "everyone can explain every file", they get deleted once the navigation
+  skeleton exists and we know for certain nothing needs them.
 
 ## Commands
 
@@ -205,6 +281,20 @@ cd snap && bun install
 bunx expo start
 bunx expo lint                # run before calling anything done
 bunx tsc --noEmit
+```
+
+Packages to add, with `expo install` so the SDK 54 versions get resolved:
+
+```bash
+bunx expo install expo-secure-store                    # A1b / B — token storage
+bunx expo install react-native-maps expo-location      # D — MapsPage
+```
+
+`expo-location` needs its config plugin in `app.json` next to the `expo-camera` one, otherwise the
+permission prompt has no explanation string:
+
+```json
+["expo-location", { "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to show you on the map" }]
 ```
 
 ## Checklist before Tuesday
@@ -222,6 +312,26 @@ bunx tsc --noEmit
 
 If we won't make it: still show up, but post in the group chat before Monday night what's missing and
 which backend points (if any) we got to. Stuck → group chat, not DMs.
+
+## Presenting on Wednesday
+
+Ahmad asks whether we can explain every file. One sentence each, written as we go — if a file
+can't get a sentence, it shouldn't be in the repo.
+
+| File | What I say about it |
+| --- | --- |
+| `lib/api.types.ts` | The contract as types, plus `ApiError` carrying the HTTP code and the backend's own message. |
+| `lib/api.mock.ts` | In-memory friends + current user, 300–800 ms delay, throws the same `ApiError`s the real backend does. |
+| `lib/api.ts` | One line. It re-exports the mock today and the real client on Wednesday — that's the whole swap. |
+| `lib/api.real.ts` | `fetch` with the bearer token, unwraps `{ friends }`, turns any non-2xx into an `ApiError`. |
+| `lib/auth-context.tsx` | Where the token lives. `logout()` exists once here, so a 401 anywhere ends in the same place. |
+| `app/(tabs)/index.tsx` | Camera; double-tap flips it, a photo hands off to the preview. |
+| `components/PhotoPreview.tsx` | Shows the photo, discard returns to the camera, send goes to the recipient picker. |
+
+Demo order, so the run-through is short: register → restart the app to show auto-login → friend
+list with a `mutual` true and a false → add `anna` (`friends`) and someone else (`pending`) →
+camera → preview → pick recipients → send → map → then the errors: `login('nobody')`,
+`register('taken')`, `register('boom')`, add yourself, and a 401 dropping back to login.
 
 ## Working agreement
 
