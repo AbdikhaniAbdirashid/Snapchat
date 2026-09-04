@@ -29,12 +29,12 @@ Leave `snap/AGENTS.md` in place. New packages are a group decision — check the
 
 Fill in your name next to your letter so the rest of the file makes sense.
 
-| Letter | Name        | GitHub         |
-| ------ | ----------- | -------------- |
-| **A**  | Devinder    | `devinder-dev` |
-| **B**  | _(fill in)_ |                |
-| **C**  | Sofie       |                |
-| **D**  | _(fill in)_ |                |
+| Letter | Name | GitHub |
+| --- | --- | --- |
+| **A** | Devinder | `devinder-dev` |
+| **B** | _(fill in)_ | |
+| **C** | _(fill in)_ | |
+| **D** | _(fill in)_ | |
 
 ## Setup — everyone does this first
 
@@ -56,12 +56,7 @@ bunx expo install react-native-maps expo-location      # D — MapsPage
 `expo-location` also needs its config plugin in `snap/app.json`, next to the `expo-camera` one:
 
 ```json
-[
-  "expo-location",
-  {
-    "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to show you on the map"
-  }
-]
+["expo-location", { "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to show you on the map" }]
 ```
 
 Before you call anything done, from `snap/`:
@@ -127,59 +122,59 @@ states are visible, keeps friends in memory so `addFriend` changes what `getFrie
 both a `mutual: true` and a `mutual: false` friend, and throws every error in the
 [mock error table](#mock-error-table). It also has to **remember who logged in**, because the
 self-add 400 and the not-friends 400 both depend on it.
-_Done when:_ every function can be made to return both a success and its errors.
+*Done when:* every function can be made to return both a success and its errors.
 
 **A2 · Auth context shape — Thursday, right after A1.** B needs this the same day, so it's defined
 early even though the implementation is B's:
 
 ```ts
 type AuthState = {
-  user: ApiUser | null;
-  isLoading: boolean; // true while reading SecureStore at startup
-  login(username, password): Promise<void>; // api.login + setAccessToken + SecureStore
-  register(username, password): Promise<void>;
-  logout(): Promise<void>; // setAccessToken(null) + clear SecureStore + go to login
-};
+  user: ApiUser | null
+  isLoading: boolean                          // true while reading SecureStore at startup
+  login(username, password): Promise<void>    // api.login + setAccessToken + SecureStore
+  register(username, password): Promise<void>
+  logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + go to login
+}
 ```
 
 A writes the file, the types and an empty provider; B fills in the body.
-_Done when:_ B can build the auth gate without inventing his own token storage.
+*Done when:* B can build the auth gate without inventing his own token storage.
 
 **A3 · Camera into the navigation — Saturday.** The working `CameraView` in `app/index.tsx`
 (double-tap flips the camera) moves to `app/(tabs)/index.tsx`. `components/PhotoPreview.tsx` gets a
 send button that routes to `app/send-snap.tsx` with the photo URI.
-_Done when:_ taking a new photo after discarding one still works.
+*Done when:* taking a new photo after discarding one still works.
 
 **A4 · Error sweep + centralized 401 — Monday.** Walk every mock error on every screen with the
 owner of that screen. Confirm that a 401 anywhere ends in exactly one place — `logout()` in
 `lib/auth-context.tsx` — and never in an individual `catch` block.
-_Done when:_ the whole checklist is ticked and `logout()` appears in one file only.
+*Done when:* the whole checklist is ticked and `logout()` appears in one file only.
 
 ### B — Navigation, auth gate, login and register
 
 **B1 · Navigation skeleton — Thursday.** Create every file in the route tree above. Empty screens
 with just the screen name as text are fine — the point is that C and D can start in parallel.
 Tabs: camera, conversations, map.
-_Done when:_ you can reach every screen by tapping around.
+*Done when:* you can reach every screen by tapping around.
 
 **B2 · Auth gate — Thursday.** Root layout wraps everything in `AuthProvider` (A2's file). While
 `isLoading`, show a splash/spinner. No user → redirect to `(auth)/login`. User → the tabs.
-_Done when:_ launching the app with no token always lands on login.
+*Done when:* launching the app with no token always lands on login.
 
 **B3 · Auth context implementation — Friday.** Fill in A2's provider. `login`/`register` call the
 API, then `setAccessToken(...)`, then save both tokens to `expo-secure-store`. On startup, read the
 token back and call `setAccessToken` so the app opens logged in. `logout()` clears all three
 (token, SecureStore, route).
-_Done when:_ you log in, force-quit the app, reopen it, and you're still logged in.
+*Done when:* you log in, force-quit the app, reopen it, and you're still logged in.
 
 **B4 · Login screen — Friday.** State: `username`, `password`, `loading`, `error`. Empty fields →
 `"Fyll i båda fälten"`, don't call the API. Otherwise `loading = true`, call `login`, and on failure
 set `error` to `e instanceof ApiError ? e.message : "Något gick fel"`. Button disabled while
 loading. Link to register.
-_Done when:_ `login('nobody', …)` shows the 404 text and `login(…, 'wrong')` shows the 401 text.
+*Done when:* `login('nobody', …)` shows the 404 text and `login(…, 'wrong')` shows the 401 text.
 
 **B5 · Register screen — Friday.** Same shape as login.
-_Done when:_ `register('taken', …)` shows the 409 and `register('boom', …)` shows the 500 without
+*Done when:* `register('taken', …)` shows the 409 and `register('boom', …)` shows the 500 without
 crashing.
 
 ### C — Friend list and adding friends
@@ -187,16 +182,16 @@ crashing.
 **C1 · ConversationsPage — Friday.** `app/(tabs)/conversations.tsx`. Call `getFriends()` in an
 effect, render a `FlatList`. `mutual: true` and `mutual: false` must look **visibly different** —
 e.g. a "Pending" label and dimmed row for `false`. Handle loading, error and "no friends yet".
-_Done when:_ both kinds of friend render differently and an API error shows its message.
+*Done when:* both kinds of friend render differently and an API error shows its message.
 
 **C2 · Refetch on return — Friday.** Use `useFocusEffect` so coming back from AddFriendView shows
 the new friend.
-_Done when:_ adding a friend and going back shows them in the list without restarting the app.
+*Done when:* adding a friend and going back shows them in the list without restarting the app.
 
 **C3 · AddFriendView — Saturday.** `app/add-friend.tsx`. One text input plus a button calling
 `addFriend(username)`. Show the `status` from the **response** — `pending` or `friends` — don't
 refetch the list to work it out.
-_Done when:_ `anna` shows "friends", any other name shows "pending", your own name shows the 400,
+*Done when:* `anna` shows "friends", any other name shows "pending", your own name shows the 400,
 and `nobody` shows the 404.
 
 **C4 · Remove friend — if there's time.** A row action calling `deleteFriend(username)`; it always
@@ -208,19 +203,19 @@ succeeds, so just remove the row.
 config plugin (see [Setup](#setup--everyone-does-this-first)). Full-screen `MapView` centered on
 your own position, with a marker for yourself. This task depends on nothing else, so it can start
 before the API mock is ready.
-_Done when:_ the map fills the screen and centers on you, on a real phone.
+*Done when:* the map fills the screen and centers on you, on a real phone.
 
 **D2 · Recipient picker + send — Saturday.** `app/send-snap.tsx`, opened from the photo preview with
 the photo URI. List friends from `getFriends()` filtered to **`mutual: true` only**, multi-select,
 an optional caption input, and a send button calling
 `sendSnap({ recipients, photo: { uri, mimetype }, text })`.
-_Done when:_ a 400 shows its message and the app doesn't freeze — the button re-enables and you can
+*Done when:* a 400 shows its message and the app doesn't freeze — the button re-enables and you can
 try again.
 
 **D3 · MapsPage, second half — Sunday.** Permission flow: ask on mount; if denied, show an
 explanation and a "try again" button. Add fake friend markers from `lib/mockLocations.ts` —
 positions are **local, not in `lib/api.ts`**, because no endpoint for them exists or is coming.
-_Done when:_ denying permission in phone settings shows the message and "try again" works.
+*Done when:* denying permission in phone settings shows the message and "try again" works.
 
 ### Everyone — Sunday and Monday
 
@@ -230,11 +225,11 @@ about anything you can't explain. Push everything.
 
 ## Pace
 
-| Day     | What should be done                 |
-| ------- | ----------------------------------- |
-| Thu 3/9 | A1, A2, B1, B2                      |
-| Fri 4/9 | B3, B4, B5, C1, C2, D1              |
-| Sat 5/9 | A3, C3, D2                          |
+| Day | What should be done |
+| --- | --- |
+| Thu 3/9 | A1, A2, B1, B2 |
+| Fri 4/9 | B3, B4, B5, C1, C2, D1 |
+| Sat 5/9 | A3, C3, D2 |
 | Sun 6/9 | D3, error sweep on your own screens |
 | Mon 7/9 | A4, everyone reads every file, push |
 
@@ -243,26 +238,26 @@ about anything you can't explain. Push everything.
 Protected endpoints need `Authorization: Bearer <access_token>`. The base URL comes on Wednesday
 (`localhost` only works in the simulator — a physical phone needs the computer's IP).
 
-| Method | URL                  | Body                     | Response                       |
-| ------ | -------------------- | ------------------------ | ------------------------------ |
-| POST   | `/register`          | `{ username, password }` | 201 `{ tokens, user }`         |
-| POST   | `/login`             | `{ username, password }` | 200 `{ tokens, user }`         |
-| GET    | `/friends`           | –                        | 200 `{ friends: ApiFriend[] }` |
-| POST   | `/friends`           | `{ friend_username }`    | 200 `{ status }`               |
-| DELETE | `/friends/:username` | –                        | 204 (empty body)               |
-| POST   | `/snaps`             | `multipart/form-data`    | 201                            |
+| Method | URL | Body | Response |
+| --- | --- | --- | --- |
+| POST | `/register` | `{ username, password }` | 201 `{ tokens, user }` |
+| POST | `/login` | `{ username, password }` | 200 `{ tokens, user }` |
+| GET | `/friends` | – | 200 `{ friends: ApiFriend[] }` |
+| POST | `/friends` | `{ friend_username }` | 200 `{ status }` |
+| DELETE | `/friends/:username` | – | 204 (empty body) |
+| POST | `/snaps` | `multipart/form-data` | 201 |
 
 `POST /snaps` fields: `file` (jpeg/png, max 10 MB), `recipients` (array of usernames), `text`
 (optional caption).
 
 ```ts
-type ApiUser = { username: string; created_at: string }; // ISO string
+type ApiUser = { username: string; created_at: string } // ISO string
 type AuthResponse = {
-  tokens: { access_token: string; refresh_token: string };
-  user: ApiUser;
-};
-type ApiFriend = { username: string; created_at: string; mutual: boolean };
-type AddFriendResponse = { status: "pending" | "friends" };
+  tokens: { access_token: string; refresh_token: string }
+  user: ApiUser
+}
+type ApiFriend = { username: string; created_at: string; mutual: boolean }
+type AddFriendResponse = { status: 'pending' | 'friends' }
 ```
 
 Note that `GET /friends` returns `{ friends: [...] }` but our `getFriends()` returns the array —
@@ -274,34 +269,21 @@ These signatures are binding. Nothing may change them, including the AI — say 
 
 ```ts
 export class ApiError extends Error {
-  constructor(
-    public code: number,
-    message: string,
-  ) {
-    super(message);
-  }
+  constructor(public code: number, message: string) { super(message) }
 }
 
-export function setAccessToken(token: string | null): void;
+export function setAccessToken(token: string | null): void
 
-export async function register(
-  username: string,
-  password: string,
-): Promise<AuthResponse>;
-export async function login(
-  username: string,
-  password: string,
-): Promise<AuthResponse>;
-export async function getFriends(): Promise<ApiFriend[]>;
-export async function addFriend(
-  friendUsername: string,
-): Promise<AddFriendResponse>;
-export async function deleteFriend(username: string): Promise<void>;
+export async function register(username: string, password: string): Promise<AuthResponse>
+export async function login(username: string, password: string): Promise<AuthResponse>
+export async function getFriends(): Promise<ApiFriend[]>
+export async function addFriend(friendUsername: string): Promise<AddFriendResponse>
+export async function deleteFriend(username: string): Promise<void>
 export async function sendSnap(input: {
-  recipients: string[];
-  photo: { uri: string; mimetype: string };
-  text?: string;
-}): Promise<void>;
+  recipients: string[]
+  photo: { uri: string; mimetype: string }
+  text?: string
+}): Promise<void>
 ```
 
 `ApiError` is what makes every screen's `catch` work identically against the mock and the real
@@ -326,29 +308,29 @@ body isn't JSON.
 A friendship is two directed links. A adds B → the link A → B exists. When B also adds A, they're
 friends.
 
-| Situation                            | `mutual` | In `/friends`?                   |
-| ------------------------------------ | -------- | -------------------------------- |
-| We added them, they haven't answered | `false`  | Yes                              |
-| Both added each other                | `true`   | Yes                              |
-| They added us, we haven't answered   | –        | No — built together on Wednesday |
+| Situation | `mutual` | In `/friends`? |
+| --- | --- | --- |
+| We added them, they haven't answered | `false` | Yes |
+| Both added each other | `true` | Yes |
+| They added us, we haven't answered | – | No — built together on Wednesday |
 
 `POST /friends` answers `pending` or `friends` — show it directly, don't refetch.
 `DELETE /friends/:username` only removes your own link and always returns 204.
 
 ### Mock error table
 
-| Triggered by                               | Response                                 |
-| ------------------------------------------ | ---------------------------------------- |
-| Protected call without token               | 401 `You are not authorized`             |
-| `register('taken', …)`                     | 409 `User already exists`                |
-| `login('nobody', …)`                       | 404 `User not found`                     |
-| `login(…, 'wrong')`                        | 401 `Invalid password!`                  |
-| `addFriend(<own name>)`                    | 400 `You can't add yourself as a friend` |
-| `addFriend('nobody')`                      | 404 `User not found`                     |
-| `addFriend('anna')`                        | `status: 'friends'`                      |
-| `addFriend(<any other name>)`              | `status: 'pending'`                      |
-| `sendSnap` to someone with `mutual: false` | 400 `You are not friends with kalle`     |
-| `register('boom', …)`                      | 500 `Unknown error`                      |
+| Triggered by | Response |
+| --- | --- |
+| Protected call without token | 401 `You are not authorized` |
+| `register('taken', …)` | 409 `User already exists` |
+| `login('nobody', …)` | 404 `User not found` |
+| `login(…, 'wrong')` | 401 `Invalid password!` |
+| `addFriend(<own name>)` | 400 `You can't add yourself as a friend` |
+| `addFriend('nobody')` | 404 `User not found` |
+| `addFriend('anna')` | `status: 'friends'` |
+| `addFriend(<any other name>)` | `status: 'pending'` |
+| `sendSnap` to someone with `mutual: false` | 400 `You are not friends with kalle` |
+| `register('boom', …)` | 500 `Unknown error` |
 
 ## Don't build this week
 
@@ -363,7 +345,7 @@ affect Wednesday's swap, so they go in the group chat before Tuesday.
 
 **1. Access tokens live 60 seconds and there is no refresh endpoint.** `generateFreshTokens` in
 `backend/src/http/controllers.ts` signs the access token with `expiresIn: "60s"`. The refresh token
-lasts 10 years, but no route consumes it and `/refresh` isn't in the contract. So a _correct_
+lasts 10 years, but no route consumes it and `/refresh` isn't in the contract. So a *correct*
 centralized `401 → logout` throws the user back to login one minute after signing in. Refresh
 endpoint on Tuesday, or a longer expiry?
 
