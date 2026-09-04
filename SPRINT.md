@@ -101,7 +101,7 @@ lib/api.ts                      re-exports the mock                A
 lib/api.types.ts                types + ApiError                   A
 lib/api.mock.ts                 the mock                           A
 lib/api.real.ts                 real fetch, empty until Wednesday  A
-lib/auth-context.tsx            shape by A, implementation by B    A + B
+lib/auth-context.tsx            AuthProvider + useAuth()            A (done)
 lib/mockLocations.ts            fake friend positions              D
 ```
 
@@ -124,20 +124,29 @@ both a `mutual: true` and a `mutual: false` friend, and throws every error in th
 self-add 400 and the not-friends 400 both depend on it.
 *Done when:* every function can be made to return both a success and its errors.
 
-**A2 · Auth context shape — Thursday, right after A1.** B needs this the same day, so it's defined
-early even though the implementation is B's:
+**A2 · Auth context — Thursday, right after A1. Done.** `lib/auth-context.tsx` exports
+`AuthProvider` and `useAuth()`:
 
 ```ts
 type AuthState = {
   user: ApiUser | null
   isLoading: boolean                          // true while reading SecureStore at startup
   login(username, password): Promise<void>    // api.login + setAccessToken + SecureStore
-  register(username, password): Promise<void>
-  logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + go to login
+  register(username, password): Promise<void> // registering logs you straight in
+  logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + user = null
 }
 ```
 
-A writes the file, the types and an empty provider; B fills in the body.
+It ended up small enough to finish in one go rather than leaving a skeleton for B, so B's part is
+the gate, not the implementation. Three things to know when using it:
+
+- **`logout()` does not navigate.** It sets `user` to `null` and the gate redirects. One mechanism,
+  one place — the context deliberately doesn't know about `expo-router`.
+- **Errors are not caught.** `login()` and `register()` let the `ApiError` through so the screen can
+  show `e.message`.
+- SecureStore holds two keys, `access_token` and `user`. There's no `GET /me`, so the user object
+  has to be stored or we'd know we're logged in after a restart but not who as.
+
 *Done when:* B can build the auth gate without inventing his own token storage.
 
 **A3 · Camera into the navigation — Saturday.** The working `CameraView` in `app/index.tsx`
@@ -161,10 +170,9 @@ Tabs: camera, conversations, map.
 `isLoading`, show a splash/spinner. No user → redirect to `(auth)/login`. User → the tabs.
 *Done when:* launching the app with no token always lands on login.
 
-**B3 · Auth context implementation — Friday.** Fill in A2's provider. `login`/`register` call the
-API, then `setAccessToken(...)`, then save both tokens to `expo-secure-store`. On startup, read the
-token back and call `setAccessToken` so the app opens logged in. `logout()` clears all three
-(token, SecureStore, route).
+**B3 · Wire the context up — Friday.** The context itself is finished (A2), so this is using it
+rather than writing it: `const { user, isLoading, login, logout } = useAuth()`. Screens never touch
+SecureStore or `setAccessToken` — they only call these.
 *Done when:* you log in, force-quit the app, reopen it, and you're still logged in.
 
 **B4 · Login screen — Friday.** State: `username`, `password`, `loading`, `error`. Empty fields →
