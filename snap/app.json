@@ -54,7 +54,11 @@
         {
           "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to show you on the map"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -28,6 +28,8 @@ export default function MapsScreen() {
     }, []);
 
     useEffect(() => {
+        // Fetches from the OS permission/location APIs on mount, not local state.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         requestLocation();
     }, [requestLocation]);
 
