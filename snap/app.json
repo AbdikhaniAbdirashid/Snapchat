@@ -48,7 +48,13 @@
           "barcodeScannerEnabled": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to show you on the map"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
