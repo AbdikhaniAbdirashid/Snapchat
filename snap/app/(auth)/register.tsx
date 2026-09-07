@@ -1,4 +1,4 @@
-import { Link, router } from 'expo-router'
+import { Link } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
@@ -35,7 +35,6 @@ export default function RegisterScreen() {
 
     try {
       await register(username.trim(), password)
-      router.replace('/(auth)/login')
     } catch (caughtError) {
       setError(caughtError instanceof ApiError ? caughtError.message : 'Något gick fel')
     } finally {

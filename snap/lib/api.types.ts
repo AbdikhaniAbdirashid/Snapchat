@@ -34,3 +34,15 @@ export class ApiError extends Error {
         super(message)
     }
 }
+
+// AuthProvider plugs logout() in here. Protected 401s call it — login's
+// "Invalid password!" 401 does not, so a failed login stays on the login screen.
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+    onUnauthorized = handler
+}
+
+export function notifyUnauthorized(): void {
+    onUnauthorized?.()
+}

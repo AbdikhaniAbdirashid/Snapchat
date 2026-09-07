@@ -163,9 +163,10 @@ the gate, not the implementation. Three things to know when using it:
 send button that routes to `app/send-snap.tsx` with the photo URI.
 *Done when:* taking a new photo after discarding one still works.
 
-**A4 · Error sweep + centralized 401 — Monday.** Walk every mock error on every screen with the
-owner of that screen. Confirm that a 401 anywhere ends in exactly one place — `logout()` in
-`lib/auth-context.tsx` — and never in an individual `catch` block.
+**A4 · Error sweep + centralized 401 — Monday. Done.** Protected 401s call
+`notifyUnauthorized()` in the mock; `AuthProvider` plugs that into `logout()`. Screens do not
+check `e.code === 401`. Login's `Invalid password!` 401 is not a protected call, so it stays on
+login and shows the message.
 *Done when:* the whole checklist is ticked and `logout()` appears in one file only.
 
 ### B — Navigation, auth gate, login and register
@@ -390,14 +391,14 @@ Don't touch existing endpoints. Propose new ones in the group chat before buildi
 
 ## Checklist before Tuesday
 
-- [ ] `lib/api.ts` exports the exact signatures, `ApiError` and `setAccessToken` — A
+- [x] `lib/api.ts` exports the exact signatures, `ApiError` and `setAccessToken` — A
 - [ ] No `fetch` outside `lib/` — everyone
-- [ ] Register against the mock redirects to login; login tokens persist after restart — B
+- [ ] Register/login against the mock, tokens persist, app opens logged in after restart — B
 - [ ] Friend list shows `mutual: true` and `false` differently — C
 - [ ] Add friend shows `pending` / `friends` — C
-- [ ] Camera → preview → recipient picker (`mutual: true` only) → send — A + D
+- [ ] Camera → preview → recipient picker (`mutual: true` only) → send — A + D (camera/preview done; picker is D)
 - [ ] MapsPage shows the map with your own position — D
-- [ ] 401 and 409 don't crash the app; 401 routes to login — A
+- [x] 401 and 409 don't crash the app; 401 routes to login — A
 - [ ] `bunx expo lint` and `bunx tsc --noEmit` are clean — everyone
 - [ ] Everyone can explain every file — everyone
 - [ ] Pushed to `main`
@@ -409,7 +410,7 @@ and which backend points (if any) we got to.
 
 Keeps the run-through short and hits every checklist item:
 
-register → login → force-quit and reopen to show auto-login → friend list with one `mutual: true` and one
+register (logs you in) → force-quit and reopen to show auto-login → friend list with one `mutual: true` and one
 `false` → add `anna` (`friends`) and another name (`pending`) → camera → preview → pick recipients →
 send → map → then the errors: `login('nobody')`, `register('taken')`, `register('boom')`, adding
 yourself, and a 401 dropping back to login.

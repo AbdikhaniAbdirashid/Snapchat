@@ -1,4 +1,4 @@
-import { ApiError } from './api.types'
+import { ApiError, notifyUnauthorized } from './api.types'
 import type { AddFriendResponse, ApiFriend, AuthResponse, SendSnapInput } from './api.types'
 
 // Every username exists except this one, so C can type any name and get 'pending'.
@@ -21,7 +21,10 @@ function delay(): Promise<void> {
 }
 
 function requireAuth(): void {
-    if (accessToken === null) throw new ApiError(401, 'You are not authorized')
+    if (accessToken === null) {
+        notifyUnauthorized()
+        throw new ApiError(401, 'You are not authorized')
+    }
 }
 
 function authResponse(username: string): AuthResponse {

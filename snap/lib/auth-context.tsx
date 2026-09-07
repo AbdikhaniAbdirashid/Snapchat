@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { login as apiLogin, register as apiRegister, setAccessToken, type ApiUser, type AuthResponse } from './api'
+import { login as apiLogin, register as apiRegister, setAccessToken, setUnauthorizedHandler, type ApiUser, type AuthResponse } from './api'
 
 const ACCESS_TOKEN_KEY = 'access_token'
 // There is no GET /me, so the user is stored alongside the token — otherwise
@@ -39,6 +39,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         restoreSession()
     }, [])
 
+    async function logout() {
+        setAccessToken(null)
+
+        await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY)
+        await SecureStore.deleteItemAsync(USER_KEY)
+
+        setUser(null)
+    }
+
+    // One place: any protected 401 calls this, screens never check e.code === 401.
+    useEffect(() => {
+        setUnauthorizedHandler(() => {
+            void logout()
+        })
+
+        return () => setUnauthorizedHandler(null)
+    }, [])
+
     // The three copies of the session are always written together: the one the
     // API layer reads, the one that survives a restart, and the one React renders.
     async function startSession(auth: AuthResponse) {
@@ -57,15 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function register(username: string, password: string) {
         await startSession(await apiRegister(username, password))
-    }
-
-    async function logout() {
-        setAccessToken(null)
-
-        await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY)
-        await SecureStore.deleteItemAsync(USER_KEY)
-
-        setUser(null)
     }
 
     const value: AuthState = { user, isLoading, login, register, logout }
