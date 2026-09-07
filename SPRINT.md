@@ -109,7 +109,7 @@ components/PhotoPreview.tsx     preview + discard + send           A
 lib/api.ts                      re-exports the mock                A
 lib/api.types.ts                types + ApiError                   A
 lib/api.mock.ts                 the mock                           A
-lib/api.real.ts                 real fetch, empty until Wednesday  A
+lib/api.real.ts                 real fetch, done; base URL Wednesday A
 lib/auth-context.tsx            AuthProvider + useAuth()            A (done)
 lib/mockLocations.ts            fake friend positions              D
 ```
