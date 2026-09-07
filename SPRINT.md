@@ -141,14 +141,18 @@ type AuthState = {
   user: ApiUser | null
   isLoading: boolean                          // true while reading SecureStore at startup
   login(username, password): Promise<void>    // api.login + setAccessToken + SecureStore
-  register(username, password): Promise<void> // creates the account; user stays logged out
+  register(username, password): Promise<void> // api.register + same session start as login
   logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + user = null
 }
 ```
 
 It ended up small enough to finish in one go rather than leaving a skeleton for B, so B's part is
-the gate, not the implementation. Three things to know when using it:
+the gate, not the implementation. Four things to know when using it:
 
+- **`register()` logs you in.** `POST /register` answers 201 with the same `{ tokens, user }` as
+  login, so the context starts the session straight away and the gate lands on the tabs. The
+  register screen doesn't need to navigate anywhere. (Decision fixed 7/9 — earlier versions of this
+  file said the opposite; the demo order below was always right.)
 - **`logout()` does not navigate.** It sets `user` to `null` and the gate redirects. One mechanism,
   one place — the context deliberately doesn't know about `expo-router`.
 - **Errors are not caught.** `login()` and `register()` let the `ApiError` through so the screen can
@@ -158,9 +162,12 @@ the gate, not the implementation. Three things to know when using it:
 
 *Done when:* B can build the auth gate without inventing his own token storage.
 
-**A3 · Camera into the navigation — Saturday.** The working `CameraView` in `app/index.tsx`
+**A3 · Camera into the navigation — Saturday. Done.** The working `CameraView` in `app/index.tsx`
 (double-tap flips the camera) moves to `app/(tabs)/index.tsx`. `components/PhotoPreview.tsx` gets a
-send button that routes to `app/send-snap.tsx` with the photo URI.
+send button that routes to `app/send-snap.tsx` with the photo URI. Tapping Send hands the photo off:
+when the camera tab gets focus back, the preview is cleared and the camera is ready for the next
+photo. So D's `send-snap.tsx` only has to `router.back()` when it's done — success or cancel, the
+camera handles itself.
 *Done when:* taking a new photo after discarding one still works.
 
 **A4 · Error sweep + centralized 401 — Monday. Done.** Protected 401s call
@@ -191,8 +198,9 @@ set `error` to `e instanceof ApiError ? e.message : "Något gick fel"`. Button d
 loading. Link to register.
 *Done when:* `login('nobody', …)` shows the 404 text and `login(…, 'wrong')` shows the 401 text.
 
-**B5 · Register screen — Friday.** Same shape as login. On success, replace the current route with
-the login screen; registration does not start a session.
+**B5 · Register screen — Friday.** Same shape as login. On success nothing to do — `register()` starts
+the session (see A2) and the gate moves to the tabs. _(Changed 7/9 by A: this used to say "replace
+with login, no session", which contradicted the demo order and the backend's 201 `{ tokens, user }`.)_
 *Done when:* `register('taken', …)` shows the 409 and `register('boom', …)` shows the 500 without
 crashing.
 
@@ -392,14 +400,14 @@ Don't touch existing endpoints. Propose new ones in the group chat before buildi
 ## Checklist before Tuesday
 
 - [x] `lib/api.ts` exports the exact signatures, `ApiError` and `setAccessToken` — A
-- [ ] No `fetch` outside `lib/` — everyone
+- [x] No `fetch` outside `lib/` — everyone (checked 7/9: `grep fetch app components` is empty)
 - [ ] Register/login against the mock, tokens persist, app opens logged in after restart — B
 - [ ] Friend list shows `mutual: true` and `false` differently — C
 - [ ] Add friend shows `pending` / `friends` — C
-- [ ] Camera → preview → recipient picker (`mutual: true` only) → send — A + D (camera/preview done; picker is D)
+- [ ] Camera → preview → recipient picker (`mutual: true` only) → send — A + D (camera/preview done, camera resets after send; picker is D)
 - [ ] MapsPage shows the map with your own position — D
 - [x] 401 and 409 don't crash the app; 401 routes to login — A
-- [ ] `bunx expo lint` and `bunx tsc --noEmit` are clean — everyone
+- [x] `bunx expo lint` and `bunx tsc --noEmit` are clean — everyone (clean on `main` 7/9; re-check after D merges)
 - [ ] Everyone can explain every file — everyone
 - [ ] Pushed to `main`
 

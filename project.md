@@ -46,8 +46,8 @@ type AuthState = {
   user: ApiUser | null
   isLoading: boolean                          // true while reading SecureStore at startup
   login(username, password): Promise<void>    // api.login + setAccessToken + SecureStore
-  register(username, password): Promise<void>
-  logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + go to login
+  register(username, password): Promise<void> // same as login: the backend answers 201 with tokens
+  logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore; the gate redirects
 }
 ```
 
@@ -58,6 +58,9 @@ type AuthState = {
 `app/index.tsx` already has a working `CameraView` (double-tap flips it) that renders
 `components/PhotoPreview.tsx` once a photo is taken. It moves to `app/(tabs)/index.tsx`, and the
 preview gets a send button routing to D's `app/send-snap.tsx` with the photo URI.
+
+Send sets a ref; when the camera tab regains focus the preview is cleared. Without that, coming back
+from send-snap showed the photo you had just sent. D only has to `router.back()`.
 
 **Done when:** taking a new photo after discarding one still works.
 
@@ -80,7 +83,7 @@ One sentence each. If a file can't get a sentence, it shouldn't be in the repo.
 | `lib/api.ts` | One line. It re-exports the mock today and the real client on Wednesday — that's the whole swap. |
 | `lib/api.real.ts` | `fetch` with the bearer token, unwraps `{ friends }`, turns any non-2xx into an `ApiError`. |
 | `lib/auth-context.tsx` | Where the token lives. `logout()` exists once here, so a 401 anywhere ends in the same place. |
-| `app/(tabs)/index.tsx` | Camera; double-tap flips it, a photo hands off to the preview. |
+| `app/(tabs)/index.tsx` | Camera; double-tap flips it, a photo hands off to the preview, and the preview clears once a send has left the screen. |
 | `components/PhotoPreview.tsx` | Shows the photo, discard returns to the camera, send goes to the recipient picker. |
 
 The three backend problems I found are written up in
@@ -90,9 +93,12 @@ is the one that actually breaks Wednesday.
 ## Repo notes
 
 - `plan.md` in the root is the original brainstorm sketch. Superseded by `SPRINT.md`.
-- `snap/` still has the Expo starter template files (`hello-wave.tsx`, `parallax-scroll-view.tsx`,
-  `ui/collapsible.tsx`, `themed-*.tsx`, `haptic-tab.tsx`, `hooks/`, `constants/theme.ts`,
-  `scripts/reset-project.js`). Nothing under `app/` imports any of them — they only reference each
-  other. Since the bar is "explain every file", they get deleted once B's navigation skeleton
-  exists and I can be certain nothing needs them.
+- The Expo starter template files (`hello-wave.tsx`, `parallax-scroll-view.tsx`, `ui/collapsible.tsx`,
+  `themed-*.tsx`, `haptic-tab.tsx`, `hooks/`, `constants/theme.ts`, `scripts/reset-project.js`, the
+  React logo PNGs and the template README) were deleted on 7/9 — nothing under `app/` imported them.
+  The template's packages (`expo-haptics`, `expo-symbols`, `expo-web-browser`, …) are still in
+  `package.json`; removing packages is a group decision and touching `bun.lock` now would collide
+  with D's branch.
+- D's `Del-D` branch edited `parallax-scroll-view.tsx`, `icon-symbol.tsx` and `use-theme-color.ts`,
+  which no longer exist. When D rebases onto `main`, those hunks just drop.
 - I work on the `part-a` branch and merge into `main` when a task is done and works against the mock.

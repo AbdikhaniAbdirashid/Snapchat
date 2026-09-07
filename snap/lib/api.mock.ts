@@ -77,7 +77,8 @@ export async function addFriend(friendUsername: string): Promise<AddFriendRespon
     requireAuth()
 
     if (friendUsername === currentUser) throw new ApiError(400, "You can't add yourself as a friend")
-    if (friendUsername === MISSING_USER) throw new ApiError(404, 'User not found')
+    // No user has an empty name, so the real backend answers 404 here too.
+    if (friendUsername.trim() === '' || friendUsername === MISSING_USER) throw new ApiError(404, 'User not found')
 
     const existing = friends.find((friend) => friend.username === friendUsername)
 

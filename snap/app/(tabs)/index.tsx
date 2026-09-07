@@ -1,7 +1,7 @@
 import PhotoPreview from '@/components/PhotoPreview';
 import { CameraView, CameraType, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CameraPage() {
@@ -10,8 +10,18 @@ export default function CameraPage() {
     const cameraViewRef = useRef<CameraView | null>(null)
     const [cameraReady, setCameraReady] = useState(false)
     const [takenPhoto, setTakenPhoto] = useState<CameraCapturedPicture>()
+    // Set when Send is tapped. The photo is handed to send-snap, so when the
+    // camera gets focus back the preview is cleared and a new photo can be taken.
+    const handedOffRef = useRef(false)
 
     const lastTapTimeRef = useRef<number | null>(null);
+
+    useFocusEffect(useCallback(() => {
+        if (handedOffRef.current) {
+            handedOffRef.current = false
+            setTakenPhoto(undefined)
+        }
+    }, []))
 
     const handleTap = () => {
         const now = new Date().getTime();
@@ -35,10 +45,13 @@ export default function CameraPage() {
             <PhotoPreview
                 photoUri={takenPhoto.uri}
                 discard={() => setTakenPhoto(undefined)}
-                send={() => router.push({
-                    pathname: '/send-snap',
-                    params: { uri: takenPhoto.uri },
-                })}
+                send={() => {
+                    handedOffRef.current = true
+                    router.push({
+                        pathname: '/send-snap',
+                        params: { uri: takenPhoto.uri },
+                    })
+                }}
             />
         )
     }
