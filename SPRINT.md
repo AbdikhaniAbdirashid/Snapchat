@@ -11,6 +11,15 @@ backend.
 
 The backend does **not** need to run this week.
 
+## Update — 7 September 2026 — Part B
+
+- Navigation: completed
+- Login screen: completed
+- Registration screen: completed
+- Auth gate: completed
+- Testing on a physical phone: remaining
+- Commit and push: remaining
+
 ## The three rules
 
 1. **Never change the API contract.** No field names, no status codes, no URLs. If something looks
@@ -132,7 +141,7 @@ type AuthState = {
   user: ApiUser | null
   isLoading: boolean                          // true while reading SecureStore at startup
   login(username, password): Promise<void>    // api.login + setAccessToken + SecureStore
-  register(username, password): Promise<void> // registering logs you straight in
+  register(username, password): Promise<void> // creates the account; user stays logged out
   logout(): Promise<void>                     // setAccessToken(null) + clear SecureStore + user = null
 }
 ```
@@ -181,7 +190,8 @@ set `error` to `e instanceof ApiError ? e.message : "Något gick fel"`. Button d
 loading. Link to register.
 *Done when:* `login('nobody', …)` shows the 404 text and `login(…, 'wrong')` shows the 401 text.
 
-**B5 · Register screen — Friday.** Same shape as login.
+**B5 · Register screen — Friday.** Same shape as login. On success, replace the current route with
+the login screen; registration does not start a session.
 *Done when:* `register('taken', …)` shows the 409 and `register('boom', …)` shows the 500 without
 crashing.
 
@@ -382,7 +392,7 @@ Don't touch existing endpoints. Propose new ones in the group chat before buildi
 
 - [ ] `lib/api.ts` exports the exact signatures, `ApiError` and `setAccessToken` — A
 - [ ] No `fetch` outside `lib/` — everyone
-- [ ] Register/login against the mock, tokens persist, app opens logged in after restart — B
+- [ ] Register against the mock redirects to login; login tokens persist after restart — B
 - [ ] Friend list shows `mutual: true` and `false` differently — C
 - [ ] Add friend shows `pending` / `friends` — C
 - [ ] Camera → preview → recipient picker (`mutual: true` only) → send — A + D
@@ -399,7 +409,7 @@ and which backend points (if any) we got to.
 
 Keeps the run-through short and hits every checklist item:
 
-register → force-quit and reopen to show auto-login → friend list with one `mutual: true` and one
+register → login → force-quit and reopen to show auto-login → friend list with one `mutual: true` and one
 `false` → add `anna` (`friends`) and another name (`pending`) → camera → preview → pick recipients →
 send → map → then the errors: `login('nobody')`, `register('taken')`, `register('boom')`, adding
 yourself, and a 401 dropping back to login.
