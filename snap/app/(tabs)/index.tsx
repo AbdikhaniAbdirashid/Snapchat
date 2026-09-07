@@ -1,9 +1,10 @@
 import PhotoPreview from '@/components/PhotoPreview';
 import { CameraView, CameraType, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
+import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function App() {
+export default function CameraPage() {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
     const cameraViewRef = useRef<CameraView | null>(null)
@@ -14,33 +15,35 @@ export default function App() {
 
     const handleTap = () => {
         const now = new Date().getTime();
-        const DOUBLE_TAP_DELAY = 300; // Adjust as needed for your use case (in milliseconds)
+        const DOUBLE_TAP_DELAY = 300;
 
         const isDoubleTap = lastTapTimeRef.current && (now - lastTapTimeRef.current) < DOUBLE_TAP_DELAY
 
         if (isDoubleTap) {
             toggleCameraFacing()
-        } else {
-            // Single tap detected
-            console.log('Single tap!');
         }
 
         lastTapTimeRef.current = now;
     };
 
     if (!permission) {
-        // Camera permissions are still loading.
         return <View />;
     }
 
     if (takenPhoto) {
         return (
-            <PhotoPreview photoUri={takenPhoto.uri} discard={() => setTakenPhoto(undefined)} />
+            <PhotoPreview
+                photoUri={takenPhoto.uri}
+                discard={() => setTakenPhoto(undefined)}
+                send={() => router.push({
+                    pathname: '/send-snap',
+                    params: { uri: takenPhoto.uri },
+                })}
+            />
         )
     }
 
     if (!permission.granted) {
-        // Camera permissions are not granted yet.
         return (
             <View style={styles.container}>
                 <Text style={styles.message}>We need your permission to show the camera</Text>
@@ -104,10 +107,5 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         borderColor: '#3338',
         borderWidth: 4
-    },
-    text: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: 'white',
     },
 });
